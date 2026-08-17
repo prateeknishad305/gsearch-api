@@ -1,0 +1,21 @@
+{
+  "name": "gsearch-api",
+  "version": "1.0.0",
+  "description": "Fast Google Search API without an API key. Scrapes the public SERP, returns structured JSON.",
+  "main": "src/server.js",
+  "type": "commonjs",
+  "scripts": {
+    "start": "node src/server.js",
+    "dev": "node --watch src/server.js",
+    "test": "node --test test/*.test.js"
+  },
+  "engines": {
+    "node": ">=18"
+  },
+  "license": "MIT",
+  "dependencies": {
+    "cheerio": "^1.0.0",
+    "express": "^4.21.0",
+    "got": "^14.4.0"
+  }
+}
