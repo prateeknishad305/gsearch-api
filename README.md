@@ -27,7 +27,7 @@ Engines that are blocked from a given IP are reported per-engine in the response
 
 ## Requirements
 
-- Node.js >= 18
+- Node.js 22 (required by `got` v14, which is ESM-only — this also fixes the Vercel serverless crash)
 
 ## Install & Run
 
