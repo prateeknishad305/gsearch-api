@@ -34,38 +34,6 @@ function parseProxyList(raw) {
     .filter((s) => /^https?:\/\//.test(s));
 }
 
-const GLOBAL_USER = process.env.PROXY_USER || '';
-const GLOBAL_PASS = process.env.PROXY_PASS || '';
-
-function withGlobalAuth(url) {
-  if (!GLOBAL_USER) return url;
-  try {
-    const u = new URL(url);
-    if (!u.username) {
-      u.username = encodeURIComponent(GLOBAL_USER);
-      u.password = encodeURIComponent(GLOBAL_PASS);
-      return u.toString();
-    }
-  } catch {
-    /* keep original */
-  }
-  return url;
-}
-
-const proxyPool = parseProxyList(process.env.PROXY_URLS || process.env.PROXY_URL).map(withGlobalAuth);
-const rotateMode = (process.env.PROXY_ROTATE || 'round-robin').toLowerCase();
-let proxyIndex = 0;
-
-function nextProxy() {
-  if (proxyPool.length === 0) return null;
-  if (rotateMode === 'random') {
-    return proxyPool[Math.floor(Math.random() * proxyPool.length)];
-  }
-  const proxy = proxyPool[proxyIndex % proxyPool.length];
-  proxyIndex += 1;
-  return proxy;
-}
-
 function agentFor(proxyUrl) {
   if (!proxyUrl) return { https: AGENT };
   return {
@@ -98,8 +66,10 @@ const proxied = new Proxy(http, {
       return typeof value === 'function' ? value.bind(target) : value;
     }
     return (url, options = {}) => {
-      const agent = agentFor(nextProxy());
-      return target[prop](url, { ...options, agent });
+      const { proxy, ...rest } = options;
+      const pool = parseProxyList(proxy);
+      const proxyUrl = pool.length ? pool[Math.floor(Math.random() * pool.length)] : null;
+      return target[prop](url, { ...rest, agent: agentFor(proxyUrl) });
     };
   },
 });
@@ -177,5 +147,4 @@ module.exports = {
   decodeDdgRedirect,
   decodeBingUrl,
   decodeYahooUrl,
-  proxyPool,
 };

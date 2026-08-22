@@ -24,13 +24,14 @@ function parse(html) {
   return results;
 }
 
-async function search({ query, num = 10, hl = 'en', gl = 'us', start = 0 }) {
+async function search({ query, num = 10, hl = 'en', gl = 'us', start = 0, proxy }) {
   const params = new URLSearchParams({ q: query, count: String(num) });
   if (gl) params.set('cc', gl);
   if (hl) params.set('setlang', hl);
   if (start > 0) params.set('first', String(start + 1));
   const url = `https://www.bing.com/search?${params.toString()}`;
   const res = await http.get(url, {
+    proxy,
     headers: {
       'user-agent': nextUserAgent(),
       accept: 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',

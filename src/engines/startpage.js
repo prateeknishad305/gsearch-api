@@ -24,9 +24,10 @@ function parse(html) {
   return results;
 }
 
-async function search({ query, num = 10, hl = 'en', gl = 'us' }) {
+async function search({ query, num = 10, hl = 'en', gl = 'us', proxy }) {
   const url = 'https://www.startpage.com/sp/search';
   const res = await http.post(url, {
+    proxy,
     headers: {
       'user-agent': nextUserAgent(),
       accept: 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',

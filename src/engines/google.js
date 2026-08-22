@@ -5,7 +5,7 @@ const { http, nextUserAgent } = require('../http');
 
 const name = 'google';
 
-async function search({ query, num = 10, hl = 'en', gl = 'us', start = 0 }) {
+async function search({ query, num = 10, hl = 'en', gl = 'us', start = 0, proxy }) {
   const params = new URLSearchParams({
     q: query,
     num: String(Math.min(Math.max(1, num), 20)),
@@ -15,6 +15,7 @@ async function search({ query, num = 10, hl = 'en', gl = 'us', start = 0 }) {
   });
   const url = `https://www.google.com/search?${params.toString()}`;
   const res = await http.get(url, {
+    proxy,
     headers: { 'user-agent': nextUserAgent(), referer: 'https://www.google.com/' },
   });
   if (res.body.includes('enablejs') && !res.body.includes('<h3')) {

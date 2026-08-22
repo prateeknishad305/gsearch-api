@@ -24,10 +24,11 @@ function parse(html) {
   return results;
 }
 
-async function search({ query, num = 10, hl = 'en', gl = 'us' }) {
+async function search({ query, num = 10, hl = 'en', gl = 'us', proxy }) {
   const params = new URLSearchParams({ q: query, kl: gl ? `${gl}-${hl}` : 'us-en' });
   const url = `https://html.duckduckgo.com/html/?${params.toString()}`;
   const res = await http.get(url, {
+    proxy,
     headers: {
       'user-agent': nextUserAgent(),
       referer: 'https://duckduckgo.com/',

@@ -56,6 +56,7 @@ curl http://localhost:3000/health
 | `start`  | `0` | Pagination offset (Google/Bing) |
 | `hl`     | `en` | Interface language |
 | `gl`     | `us` | Country |
+| `proxy`  | *(none)* | Optional `http://` or `https://` proxy URL to route requests through (see below) |
 
 Single engine:
 
@@ -110,6 +111,7 @@ Fast search tuned for Google-dork style queries. Runs all engines in parallel, p
 | `urls`   | `20` | Target number of unique URLs (1-50) |
 | `engine` | `all` | Engine(s) to use |
 | `hl` / `gl` | `en` / `us` | Locale |
+| `proxy`  | *(none)* | Optional `http://` or `https://` proxy URL (see below) |
 
 ```bash
 curl "http://localhost:3000/api/dorks?q=site:github.com intitle:api -openai&urls=20"
@@ -140,11 +142,23 @@ Supported dork operators: `site:`, `intitle:`, `allintitle:`, `inurl:`, `allinur
 
 ### GET /api/batch
 
-Multiple queries in parallel. Repeat `q` (max 10). Accepts the same `engine`, `num`, `hl`, `gl` params.
+Multiple queries in parallel. Repeat `q` (max 10). Accepts the same `engine`, `num`, `hl`, `gl`, `proxy` params.
 
 ```bash
 curl "http://localhost:3000/api/batch?q=openai&q=google&q=aws&engine=all&num=3"
 ```
+
+## Using a proxy
+
+No proxy is configured on the server (remove any `PROXY_URLS` / `PROXY_URL` / `PROXY_USER` / `PROXY_PASS` / `PROXY_ROTATE` env vars). Instead, each caller can send **their own** proxy URL as a query parameter, which is applied only to that request:
+
+```bash
+curl "http://localhost:3000/api/search?q=openai&engine=duckduckgo&proxy=http://user:pass@host:port"
+```
+
+- Accepts a single `http://` or `https://` proxy URL, or a comma-separated list (`a,b,c`) — one is picked randomly per engine request.
+- Works on `/api/search`, `/api/dorks`, and `/api/batch`.
+- When no `proxy` param is sent, requests go out directly from the server (recommended for Vercel).
 
 ## Configuration
 

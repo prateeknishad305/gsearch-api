@@ -24,11 +24,12 @@ function parse(html) {
   return results;
 }
 
-async function search({ query, num = 10, hl = 'en', gl = 'us' }) {
+async function search({ query, num = 10, hl = 'en', gl = 'us', proxy }) {
   const params = new URLSearchParams({ p: query, n: String(num) });
   if (gl) params.set('ei', 'UTF-8');
   const url = `https://search.yahoo.com/search?${params.toString()}`;
   const res = await http.get(url, {
+    proxy,
     headers: {
       'user-agent': nextUserAgent(),
       accept: 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',

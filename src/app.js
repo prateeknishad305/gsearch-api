@@ -15,6 +15,29 @@ app.use(express.json());
 
 const MAX_NUM = 20;
 
+function parseProxy(raw) {
+  if (!raw) return { proxy: '' };
+  const entries = String(raw)
+    .split(/[,\s]+/)
+    .map((s) => s.trim())
+    .filter(Boolean);
+  if (entries.length === 0) return { proxy: '' };
+  for (const entry of entries) {
+    if (!/^https?:\/\//i.test(entry)) {
+      return { error: `Invalid proxy URL "${entry}". Must start with http:// or https://` };
+    }
+    try {
+      const u = new URL(entry);
+      if (!u.hostname) {
+        return { error: `Invalid proxy URL "${entry}"` };
+      }
+    } catch {
+      return { error: `Invalid proxy URL "${entry}"` };
+    }
+  }
+  return { proxy: entries.join(',') };
+}
+
 function parseSearchQuery(req) {
   const q = String(req.query.q || '').trim();
   if (!q) {
@@ -27,7 +50,11 @@ function parseSearchQuery(req) {
   const start = Math.max(0, Number(req.query.start) || 0);
   const hl = String(req.query.hl || 'en').slice(0, 8);
   const gl = String(req.query.gl || 'us').slice(0, 8);
-  return { q, num, start, hl, gl };
+  const proxy = parseProxy(req.query.proxy);
+  if (proxy.error) {
+    return { error: proxy.error };
+  }
+  return { q, num, start, hl, gl, proxy: proxy.proxy };
 }
 
 function resolveEngines(req) {
@@ -57,7 +84,7 @@ app.get('/api/search', async (req, res, next) => {
       return res.status(400).json({ error: engineSel.error });
     }
 
-    const opts = { num: parsed.num, start: parsed.start, hl: parsed.hl, gl: parsed.gl };
+    const opts = { num: parsed.num, start: parsed.start, hl: parsed.hl, gl: parsed.gl, proxy: parsed.proxy };
     const isAll = engineSel.engines.length > 1;
 
     if (!isAll) {
@@ -104,6 +131,7 @@ app.get('/api/dorks', async (req, res, next) => {
       start: parsed.start,
       hl: parsed.hl,
       gl: parsed.gl,
+      proxy: parsed.proxy,
     };
     const t0 = Date.now();
     const data = await engine.searchAll(parsed.q, opts, engineSel.engines);
@@ -138,11 +166,16 @@ app.get('/api/batch', async (req, res, next) => {
     if (!engineSel.ok) {
       return res.status(400).json({ error: engineSel.error });
     }
+    const proxy = parseProxy(req.query.proxy);
+    if (proxy.error) {
+      return res.status(400).json({ error: proxy.error });
+    }
     const opts = {
       num: Math.min(Math.max(1, Number(req.query.num) || 10), MAX_NUM),
       start: Math.max(0, Number(req.query.start) || 0),
       hl: String(req.query.hl || 'en').slice(0, 8),
       gl: String(req.query.gl || 'us').slice(0, 8),
+      proxy: proxy.proxy,
     };
     const results = await Promise.all(
       queries.map(async (q) => {

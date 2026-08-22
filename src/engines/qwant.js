@@ -18,7 +18,7 @@ function parse(payload) {
   return results;
 }
 
-async function search({ query, num = 10, hl = 'en', gl = 'us' }) {
+async function search({ query, num = 10, hl = 'en', gl = 'us', proxy }) {
   const locale = `${gl || 'us'}_${hl === 'fr' ? 'FR' : hl === 'de' ? 'DE' : 'US'}`;
   const params = new URLSearchParams({
     q: query,
@@ -30,6 +30,7 @@ async function search({ query, num = 10, hl = 'en', gl = 'us' }) {
   });
   const url = `https://api.qwant.com/v3/search/web?${params.toString()}`;
   const res = await http.get(url, {
+    proxy,
     headers: {
       'user-agent': nextUserAgent(),
       accept: 'application/json',
