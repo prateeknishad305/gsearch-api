@@ -1,7 +1,11 @@
 'use strict';
 
+require('dotenv').config({ quiet: true });
+
 const got = require('got').default;
 const https = require('https');
+const { HttpsProxyAgent } = require('https-proxy-agent');
+const { HttpProxyAgent } = require('http-proxy-agent');
 
 const USER_AGENTS = [
   'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/125.0.0.0 Safari/537.36',
@@ -22,6 +26,54 @@ function nextUserAgent() {
   return ua;
 }
 
+function parseProxyList(raw) {
+  if (!raw) return [];
+  return raw
+    .split(/[,\s]+/)
+    .map((s) => s.trim())
+    .filter((s) => /^https?:\/\//.test(s));
+}
+
+const GLOBAL_USER = process.env.PROXY_USER || '';
+const GLOBAL_PASS = process.env.PROXY_PASS || '';
+
+function withGlobalAuth(url) {
+  if (!GLOBAL_USER) return url;
+  try {
+    const u = new URL(url);
+    if (!u.username) {
+      u.username = encodeURIComponent(GLOBAL_USER);
+      u.password = encodeURIComponent(GLOBAL_PASS);
+      return u.toString();
+    }
+  } catch {
+    /* keep original */
+  }
+  return url;
+}
+
+const proxyPool = parseProxyList(process.env.PROXY_URLS || process.env.PROXY_URL).map(withGlobalAuth);
+const rotateMode = (process.env.PROXY_ROTATE || 'round-robin').toLowerCase();
+let proxyIndex = 0;
+
+function nextProxy() {
+  if (proxyPool.length === 0) return null;
+  if (rotateMode === 'random') {
+    return proxyPool[Math.floor(Math.random() * proxyPool.length)];
+  }
+  const proxy = proxyPool[proxyIndex % proxyPool.length];
+  proxyIndex += 1;
+  return proxy;
+}
+
+function agentFor(proxyUrl) {
+  if (!proxyUrl) return { https: AGENT };
+  return {
+    http: new HttpProxyAgent(proxyUrl),
+    https: new HttpsProxyAgent(proxyUrl),
+  };
+}
+
 const http = got.extend({
   timeout: { request: 8000 },
   headers: {
@@ -29,7 +81,6 @@ const http = got.extend({
     'accept-language': 'en-US,en;q=0.9',
     'cache-control': 'no-cache',
   },
-  agent: { https: AGENT },
   retry: {
     limit: 2,
     methods: ['GET', 'POST'],
@@ -38,6 +89,19 @@ const http = got.extend({
   },
   followRedirect: true,
   throwHttpErrors: true,
+});
+
+const proxied = new Proxy(http, {
+  get(target, prop) {
+    if (typeof prop !== 'string' || !['get', 'post', 'head', 'delete', 'patch', 'put', 'request'].includes(prop)) {
+      const value = target[prop];
+      return typeof value === 'function' ? value.bind(target) : value;
+    }
+    return (url, options = {}) => {
+      const agent = agentFor(nextProxy());
+      return target[prop](url, { ...options, agent });
+    };
+  },
 });
 
 function decodeGoogleRedirectUrl(href) {
@@ -106,4 +170,12 @@ function decodeYahooUrl(href) {
   return null;
 }
 
-module.exports = { http, nextUserAgent, decodeGoogleRedirectUrl, decodeDdgRedirect, decodeBingUrl, decodeYahooUrl };
+module.exports = {
+  http: proxied,
+  nextUserAgent,
+  decodeGoogleRedirectUrl,
+  decodeDdgRedirect,
+  decodeBingUrl,
+  decodeYahooUrl,
+  proxyPool,
+};
