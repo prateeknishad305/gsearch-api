@@ -2,7 +2,7 @@
 
 require('dotenv').config({ quiet: true });
 
-const got = require('got').default;
+const got = require('got').default || require('got');
 const https = require('https');
 const { HttpsProxyAgent } = require('https-proxy-agent');
 const { HttpProxyAgent } = require('http-proxy-agent');
